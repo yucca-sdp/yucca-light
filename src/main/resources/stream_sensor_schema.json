@@ -1,0 +1,19 @@
+{
+	"title": "Generic sensor schema",
+	"type": "object",
+	"properties": {
+		"stream": {
+			"type": "string"
+		},
+		"sensor": {
+			"type": "string"
+		},
+		"application": {
+			"type": "string"
+		},
+		"values": {
+			"type": "array"
+		}
+	},
+	"required": ["stream",  "values"]
+}

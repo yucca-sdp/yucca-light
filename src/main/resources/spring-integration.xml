@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans
+xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:beans="http://www.springframework.org/schema/beans"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xmlns:int-stream="http://www.springframework.org/schema/integration/stream"
+	xmlns:int-http="http://www.springframework.org/schema/integration/http"
+	xmlns:int-jms="http://www.springframework.org/schema/integration/jms"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+  http://www.springframework.org/schema/beans/spring-beans.xsd
+  http://www.springframework.org/schema/integration
+  http://www.springframework.org/schema/integration/spring-integration.xsd
+  http://www.springframework.org/schema/integration/stream
+  http://www.springframework.org/schema/integration/stream/spring-integration-stream.xsd
+  http://www.springframework.org/schema/integration/http
+  http://www.springframework.org/schema/integration/http/spring-integration-http.xsd
+  http://www.springframework.org/schema/integration/jms
+  http://www.springframework.org/schema/integration/jms/spring-integration-jms.xsd
+  http://www.springframework.org/schema/util
+  http://www.springframework.org/schema/util/spring-util.xsd
+  http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-3.0.xsd">
+
+
+<beans:import resource="spring-integration-database.xml"/>
+<beans:import resource="spring-integration-rt.xml"/>
+<beans:import resource="spring-integration-log.xml"/>
+<beans:import resource="spring-integration-a2a.xml"/>
+
+<task:annotation-driven />
+	<!-- general bean -->
+<beans:bean name="httpRestRTTemplate" class="org.csi.yucca.gateway.util.YuccaRestTemplate">
+ 	<beans:constructor-arg  value="${yucca.tenant.username}"></beans:constructor-arg>
+ 	<beans:constructor-arg  value="${yucca.tenant.password}"></beans:constructor-arg>
+ 	<beans:constructor-arg  value="${yucca.realtime.httpTimeout}"></beans:constructor-arg>
+ 	<beans:constructor-arg>
+        <beans:array value-type="org.springframework.boot.test.TestRestTemplate.HttpClientOption">
+        </beans:array>
+ 	</beans:constructor-arg>
+ 	<beans:property name="messageConverters" >
+ 		<beans:list>
+ 		<beans:bean class="org.springframework.http.converter.StringHttpMessageConverter">
+ 		  <beans:property name="supportedMediaTypes">
+                <beans:array>
+                    <util:constant static-field="org.springframework.http.MediaType.ALL" />
+                </beans:array>
+            </beans:property>
+ 		</beans:bean>
+		<beans:bean class="org.springframework.http.converter.ObjectToStringHttpMessageConverter">
+			<beans:constructor-arg name="conversionService">
+                <beans:bean class="org.springframework.context.support.ConversionServiceFactoryBean">
+		            <beans:property name="converters">
+		        		<beans:list>
+		            		<beans:bean class="org.springframework.core.convert.support.ObjectToStringConverter" />
+		        		</beans:list>
+		    		</beans:property>
+                </beans:bean>
+            </beans:constructor-arg>
+		    <beans:property name="supportedMediaTypes">
+                <beans:array>
+                    <util:constant static-field="org.springframework.http.MediaType.ALL" />
+                </beans:array>
+            </beans:property>
+ 		</beans:bean>
+ 		</beans:list>
+ 	</beans:property>
+</beans:bean>
+
+<beans:bean name="httpRestA2ATemplate" class="org.csi.yucca.gateway.util.YuccaRestTemplate">
+ 	<beans:constructor-arg  value="${yucca.tenant.username}"></beans:constructor-arg>
+ 	<beans:constructor-arg  value="${yucca.tenant.password}"></beans:constructor-arg>
+ 	<beans:constructor-arg  value="${yucca.a2a.httpTimeout}"></beans:constructor-arg>
+ 	<beans:constructor-arg>
+        <beans:array value-type="org.springframework.boot.test.TestRestTemplate.HttpClientOption">
+        </beans:array>
+ 	</beans:constructor-arg>
+ 	<beans:property name="messageConverters" >
+ 		<beans:list>
+ 		<beans:bean class="org.springframework.http.converter.StringHttpMessageConverter">
+ 		  <beans:property name="supportedMediaTypes">
+                <beans:array>
+                    <util:constant static-field="org.springframework.http.MediaType.ALL" />
+                </beans:array>
+            </beans:property>
+ 		</beans:bean>
+		<beans:bean class="org.springframework.http.converter.ObjectToStringHttpMessageConverter">
+			<beans:constructor-arg name="conversionService">
+                <beans:bean class="org.springframework.context.support.ConversionServiceFactoryBean">
+		            <beans:property name="converters">
+		        		<beans:list>
+		            		<beans:bean class="org.csi.yucca.gateway.integration.ObjectToA2AStringConverter" />
+		        		</beans:list>
+		    		</beans:property>
+                </beans:bean>
+            </beans:constructor-arg>
+		    <beans:property name="supportedMediaTypes">
+                <beans:array>
+                    <util:constant static-field="org.springframework.http.MediaType.ALL" />
+                </beans:array>
+            </beans:property>
+ 		</beans:bean>
+ 		</beans:list>
+ 	</beans:property>
+</beans:bean>
+
+<int-jms:publish-subscribe-channel id="from_mqtt" topic-name="input.${yucca.tenant.code}" connection-factory="jmsConnectionFactory"  />
+<int:service-activator input-channel="from_mqtt" ref="fromMqttActivator" ></int:service-activator>
+
+<!-- START: RECEIVED MESSAGE SENT TO YUCCA RT   -->
+<int:channel  id="yuccaLikeRtChannel"/>
+
+<int-jms:channel  id="to_send_rt" 
+	queue-name="yucca_light.to_send_rt" 
+	connection-factory="jmsConnectionFactory"
+	>
+</int-jms:channel >
+
+<int-jms:channel  id="sending_rt_progress" 
+	queue-name="yucca_light.sending_rt_progress" 
+	connection-factory="jmsConnectionFactory"
+	>
+	<int-jms:interceptors>
+		<int:wire-tap channel="toAddAttemptChannel" />
+	</int-jms:interceptors>
+</int-jms:channel>
+
+
+<int:publish-subscribe-channel  id="outputYuccaRTChannel">
+	<int:interceptors>
+		<int:wire-tap channel="toUpdateAttemptChannel"  />	
+	</int:interceptors>
+</int:publish-subscribe-channel>
+
+
+<int:channel  id="outputYuccaA2ASplitterChannel">
+</int:channel>
+
+
+<int:publish-subscribe-channel  id="outputYuccaA2AChannel">
+	<int:interceptors>
+		<int:wire-tap channel="toUpdateA2AAttemptChannel"  />	
+	</int:interceptors>
+</int:publish-subscribe-channel>
+
+
+
+
+<int-jms:channel  id="sent_rt" 
+	queue-name="yucca_light.sent_rt" 
+	connection-factory="jmsConnectionFactory"
+	message-driven="false"
+	time-to-live="${yucca.metadata.timeToLive}"  
+	explicit-qos-enabled="true"  
+>
+	
+</int-jms:channel>
+
+<int-jms:channel  id="sending_failed" 
+	queue-name="yucca_light.sending_failed" 
+	connection-factory="jmsConnectionFactory"
+	message-driven="false" 
+>
+</int-jms:channel>
+
+<int-jms:channel  id="sent_invalid" 
+	queue-name="yucca_light.sent_invalid" 
+	connection-factory="jmsConnectionFactory"
+	message-driven="false"
+	time-to-live="${yucca.metadata.timeToLive}"  
+	explicit-qos-enabled="true"  
+>
+
+</int-jms:channel>
+
+<int-jms:channel  id="sending_a2a_progress" 
+	queue-name="yucca_light.sending_a2a_progress" 
+	connection-factory="jmsConnectionFactory"
+	>
+	<int-jms:interceptors>
+		<int:wire-tap channel="toAddAttemptChannel" />
+	</int-jms:interceptors>
+</int-jms:channel>
+
+<int:channel  id="sending_a2a_call" 
+	>
+</int:channel>
+
+<int-jms:channel  id="to_send_a2a" 
+	queue-name="yucca_light.to_send_a2a" 
+	connection-factory="jmsConnectionFactory"  
+	>
+</int-jms:channel >
+
+
+
+<int-jms:channel  id="sent_a2a" 
+	queue-name="yucca_light.sent_a2a" 
+	connection-factory="jmsConnectionFactory"
+	message-driven="false"
+	time-to-live="${yucca.metadata.timeToLive}"
+	explicit-qos-enabled="true"  
+	>
+</int-jms:channel>
+
+
+</beans:beans>

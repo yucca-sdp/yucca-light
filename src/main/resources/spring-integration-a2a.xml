@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:beans="http://www.springframework.org/schema/beans"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xmlns:int-stream="http://www.springframework.org/schema/integration/stream"
+	xmlns:int-http="http://www.springframework.org/schema/integration/http"
+	xmlns:int-jms="http://www.springframework.org/schema/integration/jms"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+  http://www.springframework.org/schema/beans/spring-beans.xsd
+  http://www.springframework.org/schema/integration
+  http://www.springframework.org/schema/integration/spring-integration.xsd
+  http://www.springframework.org/schema/integration/stream
+  http://www.springframework.org/schema/integration/stream/spring-integration-stream.xsd
+  http://www.springframework.org/schema/integration/http
+  http://www.springframework.org/schema/integration/http/spring-integration-http.xsd
+  http://www.springframework.org/schema/integration/jms
+  http://www.springframework.org/schema/integration/jms/spring-integration-jms.xsd
+  http://www.springframework.org/schema/util
+  http://www.springframework.org/schema/util/spring-util.xsd">
+
+
+<!-- 
+<int:header-enricher input-channel="sending_failed" output-channel="sending_a2a_progress">
+	<int:header name="gwStatus" value="SENDING_RT_PROGRESS" overwrite="true"/>
+	<int:header name="gwAttemptId" expression="headers.id" overwrite="true"/>
+	<int:poller cron="${yucca.a2a.poller.cron}" max-messages-per-poll="${yucca.a2a.poller.maxmessage}">
+		
+	</int:poller>
+</int:header-enricher>
+-->
+
+<!-- 
+    the poller will process N messages every minute 
+    if the size of the group is N (the poll reached the max messages) or 60 seconds time out (poll has less than 100 messages) 
+    then the payload with the list of messages is passed to defined output channel
+-->
+<int:poller max-messages-per-poll="${yucca.a2a.pollerMaxmessage}" 
+			fixed-delay="${yucca.a2a.pollerFixeddelay}" 
+			id="a2aPoller"
+			receive-timeout="100"
+ >
+ <int:transactional propagation="REQUIRES_NEW" transaction-manager="transactionManager"/>
+ </int:poller>
+
+
+<int:header-enricher input-channel="sending_failed" output-channel="to_send_a2a" >
+	<int:poller ref="a2aPoller"></int:poller>
+</int:header-enricher>
+
+<int:header-enricher input-channel="to_send_a2a" output-channel="sending_a2a_progress" >
+	<int:header name="gwStatus" value="SENDING_A2A_PROGRESS" overwrite="true"/>
+	<int:header name="gwAttemptId" expression="headers.id" overwrite="true"/>
+	<int:header name="Content-type" value="application/json" overwrite="true"/>
+	<int:header name="gwAttemptEndpoint" value="A2A_ENDPOINT" overwrite="true"/>
+</int:header-enricher>
+
+<int:aggregator ref="aggregatorEventForA2A"
+	input-channel="sending_a2a_progress" output-channel="sending_a2a_call"
+	discard-channel="nullChannel"
+    send-partial-result-on-expiry="true"
+    correlation-strategy="aggregatorEventForA2A"
+    group-timeout="100"
+    expire-groups-upon-completion="true"    
+    release-strategy-expression="size() == ${yucca.a2a.pollerMaxmessage}">
+</int:aggregator>
+<!-- usare stream e smartobject -->
+
+
+
+<int-http:outbound-gateway 
+	request-channel="sending_a2a_call"
+	reply-channel="nullChannel"
+	http-method="POST"
+	url="${yucca.a2a.httpEndpoint}/${yucca.tenant.code}"
+	rest-template="httpRestA2ATemplate"
+	reply-timeout="10000"
+	expected-response-type="java.lang.String"
+	
+>
+	<int-http:request-handler-advice-chain>
+		<beans:bean class="org.csi.yucca.gateway.integration.PreserveMessageRequestHTTPHandlerAdvice">
+           	<beans:property name="outputChannel" ref="outputYuccaA2ASplitterChannel" />
+           	<beans:property name="statusHeaderName" value="gwStatus" />
+           	<beans:property name="httpCodeHeaderName" value="gwAttemptResponse" />
+           	<beans:property name="responseDetailHeaderName" value="gwAttemptResponseDetail" />
+           	<beans:property name="statusValueException" value="SENDING_FAILED" />
+           	<beans:property name="statusValueMap">
+           		<beans:map key-type="java.lang.String" value-type="java.lang.String">
+           			<beans:entry key="INFORMATIONAL" value="SENT_INVALID"/>
+           			<beans:entry key="SUCCESSFUL" value="SENT_A2A"/>
+           			<beans:entry key="REDIRECTION" value="SENT_INVALID"/>
+           			<beans:entry key="CLIENT_ERROR" value="SENT_INVALID"/>
+           			<beans:entry key="SERVER_ERROR" value="SENT_INVALID"/>
+				</beans:map>
+           	</beans:property>
+       	</beans:bean>
+            <beans:bean class="org.springframework.integration.handler.advice.RequestHandlerCircuitBreakerAdvice">
+            <beans:property name="threshold" value="2" />
+            <beans:property name="halfOpenAfter" value="12000" />
+        </beans:bean>
+	</int-http:request-handler-advice-chain>
+</int-http:outbound-gateway>
+
+<int:splitter input-channel="outputYuccaA2ASplitterChannel" output-channel="outputYuccaA2AChannel"
+		ref="splitterEventForA2A" method="split"
+>
+</int:splitter>
+
+
+<int:header-value-router header-name="gwStatus"  default-output-channel="sent_invalid" input-channel="outputYuccaA2AChannel"
+		resolution-required="false">
+	<int:mapping value="SENT_INVALID" channel="sent_invalid"/>
+	<int:mapping value="SENDING_FAILED" channel="sending_failed"/>
+	<int:mapping value="SENT_A2A" channel="sent_a2a"/>
+</int:header-value-router>
+
+
+<!-- 
+<int:channel id="logEntryAggrChannel"/>        
+<int:logging-channel-adapter channel="logEntryAggrChannel" logger-name="logEntryAggrChannel" log-full-message="true"></int:logging-channel-adapter>
+
+<int:channel id="logEntryAggrDiscrad"/>        
+<int:logging-channel-adapter channel="logEntryAggrDiscrad" logger-name="logEntryAggrDiscrad" log-full-message="true" level="ERROR"></int:logging-channel-adapter>
+
+<int:outbound-channel-adapter channel="logEntryAggrChannel" ref="logEntryPostProcessorReceiver" method="handleMessage"/>
+ -->
+
+
+</beans:beans>

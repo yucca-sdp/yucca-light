@@ -1,0 +1,166 @@
+<div ng-controller="QueueController">
+	<div class="panel panel-primary">
+		<accordion-heading>
+			<h3><span translate>CONSOLE_MSG_LIST_TITLE</span></h3>
+		</accordion-heading> 
+		<div class="panel-body">
+			<div class="row">
+				<div id="queueList" class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+					<!-- div class='clearfix  content-toolbar'>	
+						<div class="pull-right">
+							<form class="form-inline" role="form">
+								<div class="form-group">
+									<input type="text" class="form-control col-xs-2" ng-model="codeFilter" placeholder="{{'MSG_LIST_SENSOR_FILTER'|translate}}" />
+								</div>
+							</form>
+						</div>
+					</div -->
+					<div class="table-responsive console-streamList-table">
+						<div class="list-group">
+							<div class="list-group-item">
+								<accordion>
+									<accordion-group ng-repeat="(curcodaKey, curcodaVal) in queueList">
+										<accordion-heading>
+											<h4 ng-click="loadMessagesOfQueue(curcodaVal.name)"><span class="stateName" translate>{{curcodaVal.state}}</span><span class="badge">{{curcodaVal.countMessages}}</span></h4>
+										</accordion-heading> 
+										<table class="table" class="list-group-item">
+												<thead>
+													<tr>
+														<th>
+														</th>
+														<th>
+															<a href="" ng-click="predicate = 'payload.measures.sourceCode'; reverse=!reverse">
+																<span translate>MSG_SENSOR</span> 
+																<span ng-show="predicate=='payload.measures.sourceCode' && !reverse" class="glyphicon glyphicon-chevron-up small"></span>
+																<span ng-show="predicate=='payload.measures.sourceCode' && reverse" class="glyphicon glyphicon-chevron-down small"></span>
+															</a>
+														</th>
+														<th>
+															<a href="" ng-click="predicate = 'payload.measures.streamCode'; reverse=!reverse">
+																<span translate>MSG_STREAM</span> 
+																<span ng-show="predicate=='payload.measures.streamCode' && !reverse" class="glyphicon glyphicon-chevron-up small"></span>
+																<span ng-show="predicate=='payload.measures.streamCode' && reverse" class="glyphicon glyphicon-chevron-down small"></span>
+															</a>
+														</th>
+														<th>
+															<a href="" ng-click="predicate = 'headers.gwId'; reverse=!reverse">
+																<span translate>MSG_GW_ID</span> 
+																<span ng-show="predicate=='headers.gwId' && !reverse" class="glyphicon glyphicon-chevron-up small"></span>
+																<span ng-show="predicate=='headers.gwId' && reverse" class="glyphicon glyphicon-chevron-down small"></span>
+															</a>
+														</th>
+														<th>
+															<a href="" ng-click="predicate = 'headers.gwAttemptResponse'; reverse=!reverse">
+																<span translate>MSG_GW_ATTEMPT_RES</span> 
+																<span ng-show="predicate=='headers.gwAttemptResponse' && !reverse" class="glyphicon glyphicon-chevron-up small"></span>
+																<span ng-show="predicate=='headers.gwAttemptResponse' && reverse" class="glyphicon glyphicon-chevron-down small"></span>
+															</a>
+														</th>
+														<th>&nbsp;</th>
+													</tr>
+												</thead>
+												<tbody>
+													<tr ng-show="showLoading">
+														<td colspan='6' >
+															<div class='ajax-loading-container'>
+																<span class='ajax-loading-big'></span>
+																<h4>Loading...</h4>
+															</div>
+														</td>
+													</tr>
+													<tr ng-repeat-start='evt in curcodaVal.messages | orderBy:predicate:reverse'>
+														<td ng-if="curcodaVal.name != 'yucca_light.sending_failed'">
+															<button type="button" ng-click="moveToQueue(curcodaVal.name, evt.headers.gwId, resendrt)" class="btn main-action-button" data-toggle="modal" data-target=".bs-example-modal-sm">
+																<span translate="" class="ng-scope">RE SEND RT</span>
+															</button>
+															<br />
+															<button type="button" ng-click="moveToQueue(curcodaVal.name, evt.headers.gwId, resenda2a)" class="btn main-action-button" data-toggle="modal" data-target=".bs-example-modal-sm">
+																<span translate="" class="ng-scope">RE SEND A2A</span>
+															</button>
+														</td>
+														<td ng-if="curcodaVal.name == 'yucca_light.sending_failed'">
+															<button type="button" ng-click="moveToQueue(curcodaVal.name, evt.headers.gwId, resendrt)" class="btn main-action-button" data-toggle="modal" data-target=".bs-example-modal-sm">
+																<span translate="" class="ng-scope">SEND NOW RT</span>
+															</button>
+															<br />
+															<button type="button" ng-click="moveToQueue(curcodaVal.name, evt.headers.gwId, resenda2a)" class="btn main-action-button" data-toggle="modal" data-target=".bs-example-modal-sm">
+																<span translate="" class="ng-scope">SEND NOW A2A</span>
+															</button>
+														</td>
+														<td class='text-left'>
+															<a href ng-click="evt.showDetail = !evt.showDetail">
+																<strong>{{evt.payload.sourceCode}}</strong>
+															</a>
+														</td>
+														<td class='center-left'><small>{{evt.payload.streamCode}}</small></td>
+														<td class='center-left'>{{evt.headers.gwId}}</td>
+														<td class='center-left' class='text-left'>{{evt.headers.gwAttemptResponse}}</td>
+														<td class='center-left'>
+															<i ng-click='evt.showDetail = true; loadAttempts(curcodaVal.name, evt.headers.gwId)' ng-show='!evt.showDetail' class="glyphicon glyphicon-chevron-right"></i>
+															<i ng-click='evt.showDetail = false' ng-show='evt.showDetail' class="glyphicon glyphicon-chevron-down"></i>
+														</td>
+													</tr>
+													<tr ng-repeat-end  ng-show='evt.showDetail'>
+														<td colspan='5' class='table-td-no-border-top' >	
+															<div class='components-panel'>
+																<h4><span translate>ATTEMPTS</span></h4>
+																<table class='table table-condensed'>
+																	<thead>
+																		<tr>
+																			<th translate>GW_ID</th>
+																			<th translate>ATTEMPT_ID</th>
+																			<!-- th translate>ATTEMPT_SEND_TIMESTAMP</th -->
+																			<!-- th translate>ATTEMPT_RECEIVE_TIMESTAMP</th -->
+																			<th translate>FROM_STATUS</th>
+																			<th translate>TO_STATUS</th>
+																			<th translate>RESPONSE (MSG)</th>
+																			<th translate>ENDPOINT</th>
+																		</tr>
+																	</thead>
+																	<tbody>
+																		<tr ng-repeat='att in evt.attemps'>
+																			<td>{{att.attemptGWId}}</td>
+																			<td>{{att.attemptId}}</td>
+																			<!-- td>{{att.attemptSendTimestamp}}</td -->
+																			<!-- td>{{att.attemptReceiveTimestamp}}</td -->
+																			<td>{{att.attemptFromStatus}}</td>
+																			<td>{{att.attemptToStatus}}</td>
+																			<!-- td>{{att.attemptResponse}}<br /><a href='#' uib-tooltip='{{att.attemptResponseDetail}}'>Detail</a></td -->
+																			<td>{{att.attemptResponse}}<br /><a href='#'  tooltip-placement='top' tooltip='{{att.attemptResponseDetail}}'>Detail</a></td>
+																			<td>{{att.attemptEndPoint}}</td>
+																		</tr>
+																	</tbody>
+																</table>
+															</div>
+														</td>												
+													</tr>
+												</tbody>
+											</table>
+									<accordion-group>
+								</accordion> 
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Modal -->
+<script type="text/ng-template" id="myModalContent.html">
+	<div class='modal-header'>
+        <h3 class='modal-title'>Sposta il messaggio {{items[1]}} dalla coda {{items[0]}} alla coda:</h3>
+    </div>
+    <div id="changeQueue" class='modal-body'>
+		<div class="panel panel-default">
+			<label class='btn' ng-show='qu.name!=items[0]' ng-repeat='qu in queueList'>
+				<input type="radio" name='options' ng-model='radioModel' value='{{qu.name}}'>{{qu.name}}
+			</label>
+    	</div>
+    </div>
+    <div class="modal-footer">
+        <button class='btn btn-primary' type='button' ng-click='ok()'>OK</button>
+        <button class='btn btn-warning' type='button' ng-click='cancel()'>Cancel</button>
+    </div>
+</script>

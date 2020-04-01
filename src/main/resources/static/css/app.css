@@ -1,0 +1,87 @@
+@import url(//fonts.googleapis.com/css?family=Aldrich);
+@import url(//fonts.googleapis.com/css?family=Ubuntu);
+body{font-family: 'Ubuntu', sans-serif;}
+h1, h2 {font-family: 'Aldrich', sans-serif;}
+a{color: black; text-decoration: underline;}
+
+
+
+.main-body{/*background-color: #efefef; */border-bottom: solid 1px #bbb;}
+
+/* logo */
+
+.logo{letter-spacing: 2px;}
+.logo-text-smart{color: #707c7c;}
+.logo-text-data{color: #00963d;}
+.logo-text-net{color: #707c7c;}
+
+.menu-flag-icon{display: inline-block; height: 50px; width: 40px;}
+.menu-flag-icon-en{background: url("../img/flags/en.png") center center no-repeat; }
+.menu-flag-icon-it{background: url("../img/flags/it.png") center center no-repeat; }
+
+.top-header {height: 80px;}
+.top-header h1{font-size: 24pt; text-align: center;}
+
+
+.list-entity-icon-preview-img {width: 32px; height: 32px; margin-right: 1em;}
+.console-streamList-table{}
+.table-td-no-border-top{border-top: none!important;}
+.components-panel{margin-left: 1em; padding-left: 1em;}
+.stream-old-version{background-color: #f9f9f9; color: #a9a9a9;}
+
+footer{text-align: center;   width: 100%; height: auto;  background-color:#fff; padding-top: 4em;}
+footer ul {list-style-type: none;}
+footer ul li { display:inline; text-align: center;}
+footer ul li + li::before  { content: "|"; padding: 0 .5em; }
+footer ul li a{display: block;}
+footer ul li img{ margin-bottom: .5em;}
+footer div{text-align: center;}
+footer img{ margin-bottom: 1em;}
+footer .last-row{padding: 2em; margin: 2em; text-align: center; border-top: solid 1px #b4b4b4;}
+footer .footer-separator{color: #b4b4b4; padding: 0 2em; }
+
+.panel-default > .panel-heading {background-color:#009688}
+.panel-default > .panel-heading a {color:white; text-decoration: none}
+
+h4 > span {text-decoration: none; text-transform: uppercase;}
+.list-group .list-group-item .list-group-item-heading {color:white;}
+
+.stateName {text-decoration: none; text-transform: uppercase; padding-right: 1em; font-weight: bold;}
+
+.btn {border: none;-webkit-box-shadow: none;box-shadow:none;-moz-box-shadow:none; border-radius: 0px;border-radius: 0px;}
+.btn a, a.btn { text-decoration: none;}
+.btn-default {color: white!important; background-color: #3f5152;border-color: #3f5152;}
+.btn-default:hover {background-color: #162c2d;border-color: #162c2d;}
+.btn-detail {font-size: 18pt; color: #717B7C}
+
+.btn-icon-remove {background-color: transparent; color: #dc0000;}
+.btn-icon-add {background-color: transparent; color: #009100;}
+.btn-icon-edit {background-color: transparent; color: #00bbf0;}
+.btn-icon-undo i {transform: scale(-1, 1);}
+
+.btn-icon-remove[disabled] {color:#999; background-color: transparent;}
+.btn-icon-add[disabled] {color:#999; background-color: transparent;}
+.btn-icon-edit[disabled] {color:#999; background-color: transparent;}
+
+#queueList {clear: both; overflow: hidden;padding-top: 36px;}
+#queueList .home-lang-panel {height: 136px; margin-left: 400px;}
+#queueList .intro-desc {text-align: right; max-width: 800px; font-size: 24px; padding-left: 180px; line-height: 40px; margin-top: 18px;padding-right: 1em}
+#queueList .main-title-container {background: url(../img/home/home-logo-panel-bg.png) no-repeat left center #fff;height: 306px; overflow:hidden; }
+#queueList .main-title {background-color: transparent; color: white; font-size: 128px; margin-bottom: 0px; margin-top: 0; margin-left: 110px;}
+#queueList .main-action-panel {margin-bottom:10px;color: white; }
+#queueList .main-action-panel .actions {background-color: #00BBF0; color: white; padding: 12px; height: 80px; }
+#queueList .main-action-panel .first-block {background: url(../img/home/home-start-panel-bg.png) no-repeat left center #00BBF0; color: white; padding: 24px; height: 80px; }
+#queueList .main-action-panel .main-action-panel-demo-link {margin-top: 6px;}
+#queueList .main-action-button-desc {padding-top: 15px;}
+#queueList .main-action-button {background-color: #222222; font-size: 10px; padding: 6px 10px; font-weight: bold;  color: white; position: relative; border-radius: 0; position: relative;}
+#queueList .main-action-button::after {content: '';  position: absolute;  top: 0;  width: 0;  height: 0; border-style: solid; right: -26px;  border-width: 13px;  border-color: transparent transparent transparent #222222;}
+#queueList .main-action-username {display: block;text-align: right; font-size: 18px;}
+#queueList .main-action-tenant {display: block;text-align: right; font-size: 12px;}
+#queueList .home-logo {background: url(../img/logosdp_home.png) no-repeat left center transparent;height: 69px; width:336px;overflow: hidden;margin-top: 19px;display: block;}
+#queueList .main-action-panel-demo-link a {color: #fff;}
+#queueList td.center-left {padding-top: 40px;}
+#queueList td.text-left {padding-top: 40px;}
+
+#changeQueue .btn { text-align: left; font-size: 15px; padding: 6px 10px; clear:both; font-weight: bold; position: relative; border-radius: 0; display: block;}
+#changeQueue .btn:hover{background-color: #009688; color: white;}
+#changeQueue .btn > input:checked{ font-weight: bold; background-color: #009688; color: white;}

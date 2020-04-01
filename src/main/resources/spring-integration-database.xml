@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:beans="http://www.springframework.org/schema/beans"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xmlns:int-jdbc="http://www.springframework.org/schema/integration/jdbc"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+  http://www.springframework.org/schema/beans/spring-beans.xsd
+  http://www.springframework.org/schema/integration
+  http://www.springframework.org/schema/integration/spring-integration.xsd
+  http://www.springframework.org/schema/integration/jdbc
+  http://www.springframework.org/schema/integration/jdbc/spring-integration-jdbc.xsd
+  http://www.springframework.org/schema/util
+  http://www.springframework.org/schema/util/spring-util.xsd">
+
+<!-- message store outbound channels -->
+<int:publish-subscribe-channel  id="toInsertChannel"/>
+<!-- int:logging-channel-adapter channel="toInsertChannel" log-full-message="true" logger-name="toInsertChannel"></int:logging-channel-adapter>  -->
+	<int:chain input-channel="toInsertChannel" id="toInsertChain">
+	<int:object-to-map-transformer />
+	<int-jdbc:outbound-channel-adapter data-source="dataSource" 
+		query="INSERT INTO  EVENTS (GW_ID , GW_INSERT_TIMESTAMP , GW_STATUS, SOURCE_CODE , STREAM_CODE, IS_APPLICATION, VALUES_JSON ) 
+				VALUES (:headers[gwId],:headers[gwTimestamp],:headers[gwStatus],:payload[sourceCode],:payload[streamCode], :payload[application], :payload[measures])" />
+	</int:chain>
+
+<int:publish-subscribe-channel id="toAddAttemptChannel"></int:publish-subscribe-channel>
+<!-- <int:logging-channel-adapter channel="toAddAttemptChannel" log-full-message="true" logger-name="toAddAttemptChannel"></int:logging-channel-adapter>  -->
+<int-jdbc:outbound-channel-adapter data-source="dataSource"   channel="toAddAttemptChannel"
+	query="INSERT INTO  ATTEMPT_HISTORY (GW_ID , ATTEMPT_ID, ATTEMPT_SEND_TIMESTAMP , ATTEMPT_RECEIVE_TIMESTAMP ,RESPONSE, ENDPOINT, FROM_STATUS, TO_STATUS ) 
+			VALUES (:headers[gwId],:headers[gwAttemptId], :headers[timestamp], null, null, :headers[gwAttemptEndpoint] ,:headers[gwStatus] , null)" />
+
+<int:publish-subscribe-channel id="toUpdateAttemptChannel"></int:publish-subscribe-channel>
+<!-- <int:logging-channel-adapter channel="toUpdateAttemptChannel" log-full-message="true" logger-name="toUpdateAttemptChannel"></int:logging-channel-adapter> -->
+<int-jdbc:outbound-channel-adapter data-source="dataSource" channel="toUpdateAttemptChannel"
+		query="UPDATE ATTEMPT_HISTORY set ATTEMPT_RECEIVE_TIMESTAMP = :headers[timestamp], RESPONSE = :headers[gwAttemptResponse] , RESPONSE_DETAIL = :headers[gwAttemptResponseDetail] , 
+					TO_STATUS = :headers[gwStatus]
+			WHERE GW_ID = :headers[gwId] AND ATTEMPT_ID = :headers[gwAttemptId]" />
+			
+<int:publish-subscribe-channel id="toUpdateA2AAttemptChannel"></int:publish-subscribe-channel>
+<!-- <int:logging-channel-adapter channel="toUpdateAttemptChannel" log-full-message="true" logger-name="toUpdateAttemptChannel"></int:logging-channel-adapter> -->
+<int-jdbc:outbound-channel-adapter data-source="dataSource" channel="toUpdateA2AAttemptChannel"
+		query="UPDATE ATTEMPT_HISTORY set ATTEMPT_RECEIVE_TIMESTAMP = :headers[timestamp], RESPONSE = :headers[gwAttemptResponse] , RESPONSE_DETAIL = :headers[gwAttemptResponseDetail] , 
+					TO_STATUS = :headers[gwStatus], ATTEMPT_ID  = :headers[correlationId]
+			WHERE GW_ID = :headers[gwId] AND ATTEMPT_ID = :headers[gwAttemptId]" />
+						
+
+
+</beans:beans>

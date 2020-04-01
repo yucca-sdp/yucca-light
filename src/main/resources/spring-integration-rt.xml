@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:beans="http://www.springframework.org/schema/beans"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xmlns:int-stream="http://www.springframework.org/schema/integration/stream"
+	xmlns:int-http="http://www.springframework.org/schema/integration/http"
+	xmlns:int-jms="http://www.springframework.org/schema/integration/jms"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+  http://www.springframework.org/schema/beans/spring-beans.xsd
+  http://www.springframework.org/schema/integration
+  http://www.springframework.org/schema/integration/spring-integration.xsd
+  http://www.springframework.org/schema/integration/stream
+  http://www.springframework.org/schema/integration/stream/spring-integration-stream.xsd
+  http://www.springframework.org/schema/integration/http
+  http://www.springframework.org/schema/integration/http/spring-integration-http.xsd
+  http://www.springframework.org/schema/integration/jms
+  http://www.springframework.org/schema/integration/jms/spring-integration-jms.xsd
+  http://www.springframework.org/schema/util
+  http://www.springframework.org/schema/util/spring-util.xsd">
+
+
+<int:chain input-channel="yuccaLikeRtChannel" id="yuccaLikeRtChannelChain">
+	<int:header-enricher >
+		<int:header name="gwId" expression="headers.id" overwrite="true"/>
+		<int:header name="gwTimestamp" expression="headers.timestamp" overwrite="true"/>
+		<int:header name="gwStatus" value="TO_SEND_RT" overwrite="true"/>
+	</int:header-enricher>
+	<int:recipient-list-router >
+		<int:recipient channel="toInsertChannel" />
+		<int:recipient channel="to_send_rt"/>
+	</int:recipient-list-router>
+</int:chain>
+
+<int:header-enricher input-channel="to_send_rt" output-channel="sending_rt_progress">
+	<int:header name="gwStatus" value="SENDING_RT_PROGRESS" overwrite="true"/>
+	<int:header name="gwAttemptId" expression="headers.id" overwrite="true"/>
+	<int:header name="gwAttemptEndpoint" value="RT_ENDPOINT" overwrite="true"/>
+	<int:header name="Content-type" value="application/json" overwrite="true"/>
+</int:header-enricher>
+
+
+<int-http:outbound-gateway id="outboundGatewayRealtime"
+	request-channel="sending_rt_progress"
+	reply-channel="nullChannel"
+	http-method="POST"
+	url="${yucca.realtime.httpEndpoint}/${yucca.tenant.code}"
+	rest-template="httpRestRTTemplate"
+	reply-timeout="${yucca.realtime.httpTimeout}"
+	expected-response-type="java.lang.String"
+>
+	<int-http:request-handler-advice-chain>
+		<beans:bean class="org.csi.yucca.gateway.integration.PreserveMessageRequestHTTPHandlerAdvice">
+           	<beans:property name="outputChannel" ref="outputYuccaRTChannel" />
+           	<beans:property name="statusHeaderName" value="gwStatus" />
+           	<beans:property name="httpCodeHeaderName" value="gwAttemptResponse" />
+           	<beans:property name="responseDetailHeaderName" value="gwAttemptResponseDetail" />
+           	<beans:property name="statusValueException" value="SENDING_FAILED" />
+           	<beans:property name="statusValueMap">
+           		<beans:map key-type="java.lang.String" value-type="java.lang.String">
+           			<beans:entry key="INFORMATIONAL" value="SENT_INVALID"/>
+           			<beans:entry key="SUCCESSFUL" value="SENT_RT"/>
+           			<beans:entry key="REDIRECTION" value="SENT_INVALID"/>
+           			<beans:entry key="CLIENT_ERROR" value="SENT_INVALID"/>
+           			<beans:entry key="SERVER_ERROR" value="SENT_INVALID"/>
+				</beans:map>
+           	</beans:property>
+       	</beans:bean>
+            <beans:bean class="org.springframework.integration.handler.advice.RequestHandlerCircuitBreakerAdvice">
+            <beans:property name="threshold" value="2" />
+            <beans:property name="halfOpenAfter" value="12000" />
+        </beans:bean>
+	</int-http:request-handler-advice-chain>
+</int-http:outbound-gateway>
+
+ 
+
+<!-- END: RECEIVED MESSAGE SENT TO YUCCA RT   -->
+<!-- START: RESPONSE RECEIVED FROM YUCCA IS SAVED ON DB    -->
+
+<int:header-value-router header-name="gwStatus"  default-output-channel="sent_invalid" input-channel="outputYuccaRTChannel"
+		resolution-required="false">
+	<int:mapping value="SENT_INVALID" channel="sent_invalid"/>
+	<int:mapping value="SENDING_FAILED" channel="sending_failed"/>
+	<int:mapping value="SENT_RT" channel="sent_rt"/>
+</int:header-value-router>
+
+
+
+
+</beans:beans>
